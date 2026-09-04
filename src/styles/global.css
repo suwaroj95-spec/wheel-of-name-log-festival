@@ -14,7 +14,7 @@ html,
 body,
 #root {
   width: 100%;
-  min-width: 1180px;
+  min-width: 0;
   height: 100%;
   margin: 0;
 }
@@ -40,6 +40,14 @@ button:disabled {
   grid-template-columns: minmax(820px, 1fr) 380px;
   min-height: 100vh;
   background: #07060d;
+}
+
+.app-shell.app-shell-sidebar-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell.app-shell-sidebar-hidden .setup-panel {
+  display: none;
 }
 
 .stage {
@@ -125,12 +133,12 @@ h2 {
 
 .show-area {
   --frog-idle-scale: 0.98;
-  --frog-interaction-scale: 1.08;
+  --frog-interaction-scale: 0.94;
   --frog-celebration-scale: 1.02;
-  --frog-approach-x: clamp(120px, 12vw, 230px);
-  --frog-approach-y: clamp(-72px, -6vw, -34px);
-  --frog-interaction-x: clamp(190px, 17vw, 340px);
-  --frog-interaction-y: clamp(-92px, -7vw, -46px);
+  --frog-approach-x: clamp(58px, 6vw, 112px);
+  --frog-approach-y: clamp(-58px, -4vw, -30px);
+  --frog-interaction-x: clamp(92px, 8vw, 168px);
+  --frog-interaction-y: clamp(-74px, -5vw, -38px);
   --frog-celebration-x: clamp(36px, 5vw, 92px);
   --frog-celebration-y: clamp(-46px, -4vw, -18px);
   display: grid;
@@ -166,8 +174,12 @@ h2 {
 .frog-frogSwipe,
 .frog-spinning,
 .frog-slowing {
+  transform: translate(var(--frog-approach-x), var(--frog-approach-y)) scale(var(--frog-idle-scale)) rotate(-2deg);
+}
+
+.frog-frogSwipe {
   transform: translate(var(--frog-interaction-x), var(--frog-interaction-y)) scale(var(--frog-interaction-scale)) rotate(-4deg);
-  animation: frog-swipe 460ms ease-in-out infinite alternate;
+  animation: frog-swipe 260ms ease-in-out 1 alternate;
 }
 
 .frog-celebrating,
@@ -193,6 +205,28 @@ h2 {
   object-fit: cover;
   filter: drop-shadow(0 28px 50px rgba(0, 0, 0, 0.55));
   user-select: none;
+}
+
+.stage-expanded .show-area {
+  grid-template-columns: minmax(220px, 0.66fr) minmax(390px, min(38vw, 680px)) minmax(390px, 0.94fr);
+  gap: clamp(16px, 2vw, 34px);
+  padding-inline: clamp(34px, 4vw, 72px);
+}
+
+.stage-expanded .disc-zone {
+  min-width: min(38vw, 680px);
+}
+
+.stage-expanded .festival-disc {
+  max-width: min(38vw, 680px);
+}
+
+.stage-expanded .winner-board {
+  min-height: clamp(430px, 54vh, 620px);
+}
+
+.stage-expanded .name-text {
+  font-size: clamp(38px, 3.3vw, 60px);
 }
 
 .disc-spinning {
@@ -642,10 +676,16 @@ textarea {
 
 @media (max-width: 1300px) {
   .app-shell {
-    grid-template-columns: minmax(800px, 1fr) 340px;
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .app-shell.app-shell-sidebar-hidden {
+    grid-template-columns: minmax(0, 1fr);
   }
   .show-area {
-    grid-template-columns: minmax(230px, 0.78fr) minmax(300px, 37vw) minmax(330px, 1fr);
+    grid-template-columns: minmax(190px, 0.78fr) minmax(280px, 37vw) minmax(300px, 1fr);
     padding-inline: 22px;
+  }
+  .stage-expanded .show-area {
+    grid-template-columns: minmax(190px, 0.62fr) minmax(360px, 40vw) minmax(350px, 0.9fr);
   }
 }

@@ -27,6 +27,7 @@ type StageProps = {
   phase: SpinPhase;
   currentWinner: Participant | null;
   revealStage: RevealStage | null;
+  sidebarHidden: boolean;
   particles: Particle[];
   canSpin: boolean;
   eligibleCount: number;
@@ -44,12 +45,14 @@ type StageProps = {
   onReset: () => void;
   onShuffle: () => void;
   onFullscreen: () => void;
+  onToggleSidebar: () => void;
 };
 
 export function Stage({
   phase,
   currentWinner,
   revealStage,
+  sidebarHidden,
   particles,
   canSpin,
   eligibleCount,
@@ -67,21 +70,23 @@ export function Stage({
   onReset,
   onShuffle,
   onFullscreen,
+  onToggleSidebar,
 }: StageProps) {
   const frogPose: FrogPose = phase === 'celebrating' || phase === 'complete'
     ? 'celebrate'
-    : phase === 'frogSwipe' || phase === 'spinning' || phase === 'slowing'
+    : phase === 'frogSwipe'
       ? 'swipe'
       : 'idle';
   const isReveal = phase === 'revealingAffiliation' || phase === 'revealingTitle';
   const isActive = !['idle', 'complete'].includes(phase);
+  const hasRevealedWinner = Boolean(currentWinner && revealStage);
   const showTitle = revealStage === 'title' || revealStage === 'complete';
   const showFullName = revealStage === 'complete';
   const instruction = revealStage ? revealInstruction(revealStage) : '';
   const resultStateClass = showFullName ? 'winner-board-complete' : showTitle ? 'winner-board-title' : '';
 
   return (
-    <main className="stage" style={{ backgroundImage: `url(${assets.background})` }}>
+    <main className={`stage ${sidebarHidden ? 'stage-expanded' : ''}`} style={{ backgroundImage: `url(${assets.background})` }}>
       <div className="stage-overlay" />
       <header className="top-bar">
         <div>
@@ -93,6 +98,9 @@ export function Stage({
           <button type="button" onClick={onHistory}>ประวัติการสุ่ม</button>
           <button type="button" onClick={onShuffle} disabled={isActive || eligibleCount < 2}>Shuffle รายชื่อ</button>
           <button type="button" onClick={onReset} disabled={isActive || totalCount === 0}>Reset การสุ่ม</button>
+          <button type="button" onClick={onToggleSidebar}>
+            {sidebarHidden ? 'แสดงรายชื่อ' : 'ซ่อนรายชื่อ'}
+          </button>
         </div>
       </header>
 
@@ -131,7 +139,7 @@ export function Stage({
           tabIndex={isReveal ? 0 : undefined}
           onClick={isReveal ? onAdvanceReveal : undefined}
         >
-          {currentWinner ? (
+          {hasRevealedWinner && currentWinner ? (
             <>
               <section className="result-section result-section-affiliation">
                 <p className="result-label">สังกัด</p>

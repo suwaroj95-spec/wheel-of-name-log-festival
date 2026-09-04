@@ -39,6 +39,7 @@ export function App() {
   const [revealStage, setRevealStage] = useState<RevealStage | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [participantPanelHidden, setParticipantPanelHidden] = useState(false);
   const [message, setMessage] = useState('');
   const timersRef = useRef<number[]>([]);
   const particleIdRef = useRef(0);
@@ -238,11 +239,12 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${participantPanelHidden ? 'app-shell-sidebar-hidden' : ''}`}>
       <Stage
         phase={phase}
         currentWinner={currentWinner}
         revealStage={revealStage}
+        sidebarHidden={participantPanelHidden}
         particles={particles}
         canSpin={canSpin}
         eligibleCount={eventState.eligibleIds.length}
@@ -268,6 +270,7 @@ export function App() {
         onReset={handleReset}
         onShuffle={handleShuffle}
         onFullscreen={handleFullscreen}
+        onToggleSidebar={() => setParticipantPanelHidden((hidden) => !hidden)}
       />
       <ImportPanel
         currentCount={eventState.participants.length}
