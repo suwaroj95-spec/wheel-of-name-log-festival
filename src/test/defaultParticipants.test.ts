@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { StoredEventState } from '../types/participant';
 import { loadDefaultParticipants, shouldLoadDefaultParticipants } from '../utils/defaultParticipants';
 import { defaultEventState, replaceParticipants } from '../utils/eventState';
 
-const defaultCsvPath = 'D:/Wheel-of-name-log-festival/public/data/default-participants.csv';
+const defaultCsvPath = resolve(process.cwd(), 'public', 'data', 'default-participants.csv');
 
 const configuredState: StoredEventState = replaceParticipants(defaultEventState, [{
   id: 'custom-001',

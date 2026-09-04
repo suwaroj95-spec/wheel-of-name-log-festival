@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { hasLegacyHeaderRow, parseParticipantInput } from '../utils/participantParser';
 
-const cleanedCsvPath = 'D:/Wheel-of-name-log-festival/รายชื่อสำหรับการสุ่ม_แยกยศ.csv';
+const defaultCsvPath = resolve(process.cwd(), 'public', 'data', 'default-participants.csv');
 
 describe('participant parser', () => {
   it('parses CSV with the cleaned three-column schema', () => {
@@ -90,7 +91,7 @@ describe('participant parser', () => {
   });
 
   it('imports the cleaned runtime CSV as 316 valid participants', () => {
-    const csv = readFileSync(cleanedCsvPath, 'utf8');
+    const csv = readFileSync(defaultCsvPath, 'utf8');
     const result = parseParticipantInput(csv, 'csv');
     expect(result.validParticipants).toHaveLength(316);
     expect(result.invalidRows).toHaveLength(0);
