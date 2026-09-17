@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ImportPanel } from './components/ImportPanel';
 import { Stage, type SpinPhase } from './components/Stage';
+import { preloadFrogAssets } from './config/assets';
 import { timing } from './config/timing';
 import { useLocalStorageState } from './hooks/useLocalStorageState';
 import type { Participant, StoredEventState } from './types/participant';
@@ -41,6 +42,8 @@ export function App() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [participantPanelHidden, setParticipantPanelHidden] = useState(false);
   const [message, setMessage] = useState('');
+  const [frogAssetsReady, setFrogAssetsReady] = useState(false);
+  const [frogAssetError, setFrogAssetError] = useState(false);
   const timersRef = useRef<number[]>([]);
   const particleIdRef = useRef(0);
   const audioRef = useRef(new FestivalAudio());
@@ -56,6 +59,20 @@ export function App() {
   const canSpin = phase === 'idle' && eventState.eligibleIds.length > 0;
 
   useEffect(() => () => clearAllTimers(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void preloadFrogAssets()
+      .then(() => {
+        if (!cancelled) setFrogAssetsReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setFrogAssetError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (phase === 'decision') removeDecisionButtonRef.current?.focus();
@@ -106,7 +123,7 @@ export function App() {
   }
 
   async function handleSpin() {
-    if (!canSpin) return;
+    if (!canSpin || !frogAssetsReady || frogAssetError) return;
     await audioRef.current.ensureContext();
     audioRef.current.playTap(eventState.muted);
     clearAllTimers();
@@ -232,11 +249,11 @@ export function App() {
         revealState={revealState}
         sidebarHidden={participantPanelHidden}
         particles={particles}
-        canSpin={canSpin}
+        canSpin={canSpin && frogAssetsReady && !frogAssetError}
         eligibleCount={eventState.eligibleIds.length}
         totalCount={eventState.participants.length}
         muted={eventState.muted}
-        message={message}
+        message={frogAssetError ? 'ไม่สามารถโหลดภาพมาสคอตได้ กรุณารีเฟรชหน้าแล้วลองอีกครั้ง' : message}
         onSpin={handleSpin}
         onReveal={handleReveal}
         onToggleMuted={(value) => {

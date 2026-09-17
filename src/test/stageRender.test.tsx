@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { Stage, type SpinPhase } from '../components/Stage';
+import { frogPoseAsset } from '../config/assets';
 import type { Participant } from '../types/participant';
 import { initialRevealState, revealField, type RevealState } from '../utils/revealState';
 
@@ -37,6 +38,19 @@ function renderStage(phase: SpinPhase, revealState: RevealState | null, sidebarH
 }
 
 describe('stage winner reveal rendering', () => {
+  it('uses the idle frog before the swipe phase', () => {
+    expect(renderStage('idle', null)).toContain(`src="${frogPoseAsset.idle}"`);
+    expect(renderStage('frogApproach', null)).toContain(`src="${frogPoseAsset.idle}"`);
+  });
+
+  it.each<SpinPhase>(['frogSwipe', 'spinning', 'slowing'])(
+    'uses the distinct swipe frog during %s',
+    (phase) => {
+      expect(frogPoseAsset.swipe).not.toBe(frogPoseAsset.idle);
+      expect(renderStage(phase, null)).toContain(`src="${frogPoseAsset.swipe}"`);
+    },
+  );
+
   it.each<SpinPhase>(['frogApproach', 'frogSwipe', 'spinning', 'slowing'])(
     'hides winner data during %s',
     (phase) => {
