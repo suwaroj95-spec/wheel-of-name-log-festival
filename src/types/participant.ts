@@ -16,7 +16,7 @@ export type DrawRecord = {
 };
 
 export type StoredEventState = {
-  storageVersion: 2;
+  storageVersion: 3;
   participants: Participant[];
   eligibleIds: string[];
   history: DrawRecord[];

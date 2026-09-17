@@ -1,7 +1,7 @@
 import type { DrawRecord, Participant, StoredEventState } from '../types/participant';
 
 export const defaultEventState: StoredEventState = {
-  storageVersion: 2,
+  storageVersion: 3,
   participants: [],
   eligibleIds: [],
   history: [],
@@ -83,7 +83,7 @@ export function sanitizeStoredEventState(state: StoredEventState): {
       && typeof record.affiliation === 'string'
     ));
 
-  if (maybeState.storageVersion === 2 && hasCurrentShape) {
+  if (maybeState.storageVersion === 3 && hasCurrentShape) {
     return { state, invalidatedLegacyParticipants: false };
   }
 

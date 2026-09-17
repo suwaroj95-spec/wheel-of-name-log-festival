@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { StoredEventState } from '../types/participant';
 import { loadDefaultParticipants, shouldLoadDefaultParticipants } from '../utils/defaultParticipants';
-import { defaultEventState, replaceParticipants } from '../utils/eventState';
+import { commitWinner, defaultEventState, replaceParticipants, sanitizeStoredEventState } from '../utils/eventState';
 
 const defaultCsvPath = resolve(process.cwd(), 'public', 'data', 'default-participants.csv');
 
@@ -34,6 +34,36 @@ describe('default participants', () => {
     expect(validation.validParticipants).toHaveLength(372);
     expect(validation.invalidRows).toHaveLength(0);
     expect(validation.duplicateRows).toHaveLength(0);
+  });
+
+  it('loads defaults after version-2 migration and preserves a removed winner on refresh', async () => {
+    const oldParticipants = Array.from({ length: 316 }, (_, index) => ({
+      id: `old-${index}`,
+      title: 'นาย',
+      fullName: `รายชื่อเดิม ${index}`,
+      affiliation: 'หน่วยงานเดิม',
+    }));
+    const legacy = {
+      ...replaceParticipants(defaultEventState, oldParticipants),
+      storageVersion: 2,
+    } as unknown as StoredEventState;
+    const migrated = sanitizeStoredEventState(legacy).state;
+    expect(shouldLoadDefaultParticipants(migrated)).toBe(true);
+
+    const csv = readFileSync(defaultCsvPath, 'utf8');
+    const validation = await loadDefaultParticipants(async () => new Response(csv));
+    const loaded = replaceParticipants(migrated, validation.validParticipants);
+    expect(loaded.storageVersion).toBe(3);
+    expect(loaded.participants).toHaveLength(372);
+    expect(loaded.eligibleIds).toHaveLength(372);
+
+    const drawn = commitWinner(loaded, loaded.participants[0], true);
+    const refreshed = sanitizeStoredEventState(JSON.parse(JSON.stringify(drawn)) as StoredEventState);
+    expect(refreshed.invalidatedLegacyParticipants).toBe(false);
+    expect(refreshed.state.participants).toHaveLength(372);
+    expect(refreshed.state.eligibleIds).toHaveLength(371);
+    expect(refreshed.state.history).toHaveLength(1);
+    expect(shouldLoadDefaultParticipants(refreshed.state)).toBe(false);
   });
 
   it('keeps default load failure recoverable', async () => {

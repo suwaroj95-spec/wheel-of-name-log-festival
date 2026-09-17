@@ -15,7 +15,7 @@ const participants: Participant[] = [
 ];
 
 const state: StoredEventState = {
-  storageVersion: 2,
+  storageVersion: 3,
   participants,
   eligibleIds: participants.map((participant) => participant.id),
   history: [],
@@ -24,6 +24,32 @@ const state: StoredEventState = {
 };
 
 describe('event state', () => {
+  it('preserves a valid version-3 state, including draw history and eligibility', () => {
+    const drawn = commitWinner(state, participants[0], true);
+    const sanitized = sanitizeStoredEventState(drawn);
+    expect(sanitized.invalidatedLegacyParticipants).toBe(false);
+    expect(sanitized.state).toBe(drawn);
+    expect(sanitized.state.eligibleIds).toEqual(['p-002', 'p-003']);
+    expect(sanitized.state.history).toHaveLength(1);
+  });
+
+  it('invalidates version-2 participant and draw data while preserving safe preferences', () => {
+    const legacy = {
+      ...commitWinner(state, participants[0], true),
+      storageVersion: 2,
+      muted: true,
+      removeSelected: false,
+    } as unknown as StoredEventState;
+    const sanitized = sanitizeStoredEventState(legacy);
+    expect(sanitized.invalidatedLegacyParticipants).toBe(true);
+    expect(sanitized.state.storageVersion).toBe(3);
+    expect(sanitized.state.participants).toEqual([]);
+    expect(sanitized.state.eligibleIds).toEqual([]);
+    expect(sanitized.state.history).toEqual([]);
+    expect(sanitized.state.muted).toBe(true);
+    expect(sanitized.state.removeSelected).toBe(false);
+  });
+
   it('remove decision removes the winner', () => {
     const next = commitWinner(state, participants[0], true);
     expect(next.eligibleIds).toEqual(['p-002', 'p-003']);
