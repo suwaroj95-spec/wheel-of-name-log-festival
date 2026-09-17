@@ -1,13 +1,21 @@
-export type RevealStage = 'affiliation' | 'title' | 'complete';
+export type RevealField = 'title' | 'name';
 
-export function nextRevealStage(stage: RevealStage): RevealStage {
-  if (stage === 'affiliation') return 'title';
-  if (stage === 'title') return 'complete';
-  return 'complete';
+export type RevealState = {
+  titleRevealed: boolean;
+  nameRevealed: boolean;
+};
+
+export const initialRevealState: RevealState = {
+  titleRevealed: false,
+  nameRevealed: false,
+};
+
+export function revealField(state: RevealState, field: RevealField): RevealState {
+  return field === 'title'
+    ? { ...state, titleRevealed: true }
+    : { ...state, nameRevealed: true };
 }
 
-export function revealInstruction(stage: RevealStage): string {
-  if (stage === 'affiliation') return 'คลิกเพื่อเปิดชื่อผู้โชคดี';
-  if (stage === 'title') return 'คลิกอีกครั้งเพื่อเปิดชื่อผู้โชคดี';
-  return '';
+export function isRevealComplete(state: RevealState): boolean {
+  return state.titleRevealed && state.nameRevealed;
 }

@@ -24,12 +24,12 @@ const state: StoredEventState = {
 };
 
 describe('event state', () => {
-  it('remove-selected ON removes the winner', () => {
+  it('remove decision removes the winner', () => {
     const next = commitWinner(state, participants[0], true);
     expect(next.eligibleIds).toEqual(['p-002', 'p-003']);
   });
 
-  it('remove-selected OFF keeps the winner eligible', () => {
+  it('keep decision leaves the winner eligible', () => {
     const next = commitWinner(state, participants[0], false);
     expect(next.eligibleIds).toEqual(['p-001', 'p-002', 'p-003']);
   });
@@ -61,6 +61,13 @@ describe('event state', () => {
     const retained = commitWinner(state, participants[1], false);
     expect(removed.history[0].removedFromEligibility).toBe(true);
     expect(retained.history[0].removedFromEligibility).toBe(false);
+  });
+
+  it('uses the explicit decision even when legacy removeSelected disagrees', () => {
+    const legacyKeep = { ...state, removeSelected: false };
+    const legacyRemove = { ...state, removeSelected: true };
+    expect(commitWinner(legacyKeep, participants[0], true).eligibleIds).toEqual(['p-002', 'p-003']);
+    expect(commitWinner(legacyRemove, participants[0], false).eligibleIds).toEqual(state.eligibleIds);
   });
 
   it('replace participants resets eligibility and history', () => {

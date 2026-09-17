@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HistoryPanel } from './components/HistoryPanel';
 import { ImportPanel } from './components/ImportPanel';
 import { Stage, type SpinPhase } from './components/Stage';
@@ -17,7 +17,7 @@ import {
 } from './utils/eventState';
 import { getUnbiasedRandomInt, pickRandomId } from './utils/random';
 import type { ImportValidation } from './utils/participantParser';
-import { nextRevealStage, type RevealStage } from './utils/revealState';
+import { initialRevealState, isRevealComplete, revealField, type RevealField, type RevealState } from './utils/revealState';
 
 type Particle = {
   id: number;
@@ -36,7 +36,7 @@ export function App() {
   const [eventState, setEventState] = useLocalStorageState<StoredEventState>(storageKey, defaultEventState);
   const [phase, setPhase] = useState<SpinPhase>('idle');
   const [currentWinner, setCurrentWinner] = useState<Participant | null>(null);
-  const [revealStage, setRevealStage] = useState<RevealStage | null>(null);
+  const [revealState, setRevealState] = useState<RevealState | null>(null);
   const [particles, setParticles] = useState<Particle[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [participantPanelHidden, setParticipantPanelHidden] = useState(false);
@@ -45,6 +45,8 @@ export function App() {
   const particleIdRef = useRef(0);
   const audioRef = useRef(new FestivalAudio());
   const committedWinnerIdRef = useRef<string | null>(null);
+  const decisionPendingRef = useRef(false);
+  const removeDecisionButtonRef = useRef<HTMLButtonElement>(null);
   const defaultLoadAttemptedRef = useRef(false);
 
   const participantById = useMemo(
@@ -54,6 +56,10 @@ export function App() {
   const canSpin = phase === 'idle' && eventState.eligibleIds.length > 0;
 
   useEffect(() => () => clearAllTimers(), []);
+
+  useEffect(() => {
+    if (phase === 'decision') removeDecisionButtonRef.current?.focus();
+  }, [phase]);
 
   useEffect(() => {
     const sanitized = sanitizeStoredEventState(eventState);
@@ -105,8 +111,9 @@ export function App() {
     audioRef.current.playTap(eventState.muted);
     clearAllTimers();
     setMessage('');
-    setRevealStage(null);
+    setRevealState(null);
     committedWinnerIdRef.current = null;
+    decisionPendingRef.current = false;
     const winnerId = pickRandomId(eventState.eligibleIds);
     const winner = participantById.get(winnerId);
     if (!winner) return;
@@ -149,61 +156,39 @@ export function App() {
   }
 
   function startReveal() {
-    setPhase('revealingAffiliation');
-    setRevealStage('affiliation');
+    setPhase('revealing');
+    setRevealState(initialRevealState);
   }
 
-  const finishReveal = useCallback((winner: Participant) => {
-    if (committedWinnerIdRef.current === winner.id) return;
-    committedWinnerIdRef.current = winner.id;
-    setPhase('celebrating');
-    setEventState((current) => commitWinner(current, winner, current.removeSelected));
-    audioRef.current.playWinner(eventState.muted);
-    schedule(() => setPhase('complete'), timing.celebrationDelayMs);
-  }, [eventState.muted, setEventState]);
-
-  const advanceReveal = useCallback(() => {
-    if (!currentWinner || !revealStage || revealStage === 'complete') return;
-    const nextStage = nextRevealStage(revealStage);
-    setRevealStage(nextStage);
-    if (nextStage === 'title') {
-      setPhase('revealingTitle');
-      return;
+  function handleReveal(field: RevealField) {
+    if (phase !== 'revealing' || !currentWinner || !revealState || decisionPendingRef.current) return;
+    if (field === 'title' && revealState.titleRevealed) return;
+    if (field === 'name' && revealState.nameRevealed) return;
+    const next = revealField(revealState, field);
+    setRevealState(next);
+    if (isRevealComplete(next)) {
+      decisionPendingRef.current = true;
+      audioRef.current.playWinner(eventState.muted);
+      setPhase('decision');
     }
-    setPhase('celebrating');
-    finishReveal(currentWinner);
-  }, [currentWinner, finishReveal, revealStage]);
+  }
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const isTyping = target?.tagName === 'TEXTAREA'
-        || target?.tagName === 'INPUT'
-        || target?.isContentEditable;
-      if (isTyping || !currentWinner || !revealStage || revealStage === 'complete') return;
-      if (event.key === ' ' || event.key === 'Enter') {
-        event.preventDefault();
-        advanceReveal();
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [advanceReveal, currentWinner, revealStage]);
-
-  function handleOpenAll() {
-    if (!currentWinner) return;
-    clearAllTimers();
-    audioRef.current.stopSpin();
-    setRevealStage('complete');
-    finishReveal(currentWinner);
+  function handleDecision(removeFromEligibility: boolean) {
+    if (phase !== 'decision' || !currentWinner || committedWinnerIdRef.current === currentWinner.id) return;
+    committedWinnerIdRef.current = currentWinner.id;
+    setEventState((current) => commitWinner(current, currentWinner, removeFromEligibility));
+    setCurrentWinner(null);
+    setRevealState(null);
+    setPhase('idle');
+    decisionPendingRef.current = false;
   }
 
   function handleApplyParticipants(validation: ImportValidation) {
     setEventState((current) => replaceParticipants(current, validation.validParticipants));
     setCurrentWinner(null);
     committedWinnerIdRef.current = null;
-    setRevealStage(null);
+    decisionPendingRef.current = false;
+    setRevealState(null);
     setPhase('idle');
     setMessage(`ใช้รายชื่อ ${validation.validParticipants.length} คนแล้ว`);
   }
@@ -215,7 +200,8 @@ export function App() {
     setEventState(resetDraws);
     setCurrentWinner(null);
     committedWinnerIdRef.current = null;
-    setRevealStage(null);
+    decisionPendingRef.current = false;
+    setRevealState(null);
     setPhase('idle');
     setMessage('Reset การสุ่มเรียบร้อยแล้ว');
   }
@@ -243,25 +229,16 @@ export function App() {
       <Stage
         phase={phase}
         currentWinner={currentWinner}
-        revealStage={revealStage}
+        revealState={revealState}
         sidebarHidden={participantPanelHidden}
         particles={particles}
         canSpin={canSpin}
         eligibleCount={eventState.eligibleIds.length}
         totalCount={eventState.participants.length}
-        removeSelected={eventState.removeSelected}
         muted={eventState.muted}
         message={message}
         onSpin={handleSpin}
-        onOpenAll={handleOpenAll}
-        onNext={() => {
-          setCurrentWinner(null);
-          committedWinnerIdRef.current = null;
-          setRevealStage(null);
-          setPhase('idle');
-        }}
-        onAdvanceReveal={advanceReveal}
-        onToggleRemoveSelected={(value) => setEventState((current) => ({ ...current, removeSelected: value }))}
+        onReveal={handleReveal}
         onToggleMuted={(value) => {
           setEventState((current) => ({ ...current, muted: value }));
           if (value) audioRef.current.stopSpin();
@@ -278,6 +255,36 @@ export function App() {
         onApply={handleApplyParticipants}
       />
       <HistoryPanel history={eventState.history} open={historyOpen} onClose={() => setHistoryOpen(false)} />
+      {phase === 'decision' && currentWinner && (
+        <div className="decision-backdrop">
+          <section
+            className="decision-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="decision-title"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') event.preventDefault();
+              if (event.key !== 'Tab') return;
+              const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button');
+              if (event.shiftKey && document.activeElement === buttons[0]) {
+                event.preventDefault();
+                buttons[buttons.length - 1]?.focus();
+              } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+                event.preventDefault();
+                buttons[0]?.focus();
+              }
+            }}
+          >
+            <h2 id="decision-title">ต้องการนำผู้โชคดีรายนี้ออกจากรายชื่อสำหรับการสุ่มรอบถัดไปหรือไม่?</h2>
+            <p className="decision-winner">{currentWinner.title} {currentWinner.fullName}</p>
+            <p className="decision-affiliation">{currentWinner.affiliation}</p>
+            <div className="decision-actions">
+              <button ref={removeDecisionButtonRef} type="button" onClick={() => handleDecision(true)}>นำออกจากการสุ่ม</button>
+              <button type="button" onClick={() => handleDecision(false)}>เก็บไว้ในรายชื่อ</button>
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

@@ -90,10 +90,10 @@ describe('participant parser', () => {
     expect(result.validParticipants.map((participant) => participant.id)).toEqual(['p-001', 'p-002']);
   });
 
-  it('imports the cleaned runtime CSV as 316 valid participants', () => {
+  it('imports the bundled runtime CSV as 372 valid participants', () => {
     const csv = readFileSync(defaultCsvPath, 'utf8');
     const result = parseParticipantInput(csv, 'csv');
-    expect(result.validParticipants).toHaveLength(316);
+    expect(result.validParticipants).toHaveLength(372);
     expect(result.invalidRows).toHaveLength(0);
     expect(result.duplicateRows).toHaveLength(0);
   });

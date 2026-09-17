@@ -1,4 +1,5 @@
 ﻿node_modules/
 dist/
+/local-input/
 /*.xlsx
 /รายชื่อสำหรับการสุ่ม_แยกยศ.csv

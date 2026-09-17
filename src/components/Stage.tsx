@@ -1,6 +1,6 @@
 import { assets, frogPoseAsset, type FrogPose } from '../config/assets';
 import type { Participant } from '../types/participant';
-import { revealInstruction, type RevealStage } from '../utils/revealState';
+import type { RevealField, RevealState } from '../utils/revealState';
 
 export type SpinPhase =
   | 'idle'
@@ -8,10 +8,8 @@ export type SpinPhase =
   | 'frogSwipe'
   | 'spinning'
   | 'slowing'
-  | 'revealingAffiliation'
-  | 'revealingTitle'
-  | 'celebrating'
-  | 'complete';
+  | 'revealing'
+  | 'decision';
 
 type Particle = {
   id: number;
@@ -26,20 +24,16 @@ type Particle = {
 type StageProps = {
   phase: SpinPhase;
   currentWinner: Participant | null;
-  revealStage: RevealStage | null;
+  revealState: RevealState | null;
   sidebarHidden: boolean;
   particles: Particle[];
   canSpin: boolean;
   eligibleCount: number;
   totalCount: number;
-  removeSelected: boolean;
   muted: boolean;
   message: string;
   onSpin: () => void;
-  onOpenAll: () => void;
-  onNext: () => void;
-  onAdvanceReveal: () => void;
-  onToggleRemoveSelected: (value: boolean) => void;
+  onReveal: (field: RevealField) => void;
   onToggleMuted: (value: boolean) => void;
   onHistory: () => void;
   onReset: () => void;
@@ -51,20 +45,16 @@ type StageProps = {
 export function Stage({
   phase,
   currentWinner,
-  revealStage,
+  revealState,
   sidebarHidden,
   particles,
   canSpin,
   eligibleCount,
   totalCount,
-  removeSelected,
   muted,
   message,
   onSpin,
-  onOpenAll,
-  onNext,
-  onAdvanceReveal,
-  onToggleRemoveSelected,
+  onReveal,
   onToggleMuted,
   onHistory,
   onReset,
@@ -72,18 +62,13 @@ export function Stage({
   onFullscreen,
   onToggleSidebar,
 }: StageProps) {
-  const frogPose: FrogPose = phase === 'celebrating' || phase === 'complete'
+  const frogPose: FrogPose = phase === 'decision'
     ? 'celebrate'
-    : phase === 'frogSwipe'
+    : phase === 'frogSwipe' || phase === 'spinning' || phase === 'slowing'
       ? 'swipe'
       : 'idle';
-  const isReveal = phase === 'revealingAffiliation' || phase === 'revealingTitle';
-  const isActive = !['idle', 'complete'].includes(phase);
-  const hasRevealedWinner = Boolean(currentWinner && revealStage);
-  const showTitle = revealStage === 'title' || revealStage === 'complete';
-  const showFullName = revealStage === 'complete';
-  const instruction = revealStage ? revealInstruction(revealStage) : '';
-  const resultStateClass = showFullName ? 'winner-board-complete' : showTitle ? 'winner-board-title' : '';
+  const isActive = phase !== 'idle';
+  const hasRevealedWinner = Boolean(currentWinner && revealState);
 
   return (
     <main className={`stage ${sidebarHidden ? 'stage-expanded' : ''}`} style={{ backgroundImage: `url(${assets.background})` }}>
@@ -134,10 +119,7 @@ export function Stage({
         </div>
 
         <div
-          className={`winner-board ${resultStateClass} ${isReveal ? 'winner-board-clickable' : ''}`}
-          role={isReveal ? 'button' : undefined}
-          tabIndex={isReveal ? 0 : undefined}
-          onClick={isReveal ? onAdvanceReveal : undefined}
+          className={`winner-board ${hasRevealedWinner ? 'winner-board-result' : ''}`}
         >
           {hasRevealedWinner && currentWinner ? (
             <>
@@ -145,38 +127,28 @@ export function Stage({
                 <p className="result-label">สังกัด</p>
                 <p className="affiliation-text">{currentWinner.affiliation}</p>
               </section>
-              {showTitle && (
+              <div className="winner-identity">
                 <section className="result-section result-section-title">
-                  <p className="result-label compact">ยศ</p>
-                  <p className="title-text">{currentWinner.title}</p>
+                  {revealState?.titleRevealed ? (
+                    <>
+                      <p className="result-label compact">ยศ</p>
+                      <p className="title-text">{currentWinner.title}</p>
+                    </>
+                  ) : (
+                    <button className="reveal-button" type="button" onClick={() => onReveal('title')}>เปิดยศ</button>
+                  )}
                 </section>
-              )}
-              {showFullName && (
                 <section className="result-section result-section-name">
-                  <p className="result-label compact">ชื่อ-สกุล</p>
-                  <p className="name-text">{currentWinner.fullName}</p>
+                  {revealState?.nameRevealed ? (
+                    <>
+                      <p className="result-label compact">ชื่อ-สกุล</p>
+                      <p className="name-text">{currentWinner.fullName}</p>
+                    </>
+                  ) : (
+                    <button className="reveal-button" type="button" onClick={() => onReveal('name')}>เปิดชื่อ</button>
+                  )}
                 </section>
-              )}
-              {isReveal && (
-                <div className="reveal-actions">
-                  <p className="reveal-instruction">{instruction}</p>
-                  <button
-                    className="secondary-action"
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onOpenAll();
-                    }}
-                  >
-                    เปิดทั้งหมด
-                  </button>
-                </div>
-              )}
-              {(phase === 'celebrating' || phase === 'complete') && (
-                <button className="primary-action" type="button" onClick={onNext}>
-                  สุ่มคนถัดไป
-                </button>
-              )}
+              </div>
             </>
           ) : (
             <>
@@ -193,15 +165,6 @@ export function Stage({
           SPIN
         </button>
         <div className="switches">
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={removeSelected}
-              onChange={(event) => onToggleRemoveSelected(event.target.checked)}
-              disabled={isActive}
-            />
-            นำชื่อที่สุ่มได้ออกจากรอบถัดไป
-          </label>
           <label className="checkbox-row">
             <input
               type="checkbox"

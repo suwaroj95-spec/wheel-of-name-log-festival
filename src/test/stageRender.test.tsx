@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { Stage, type SpinPhase } from '../components/Stage';
 import type { Participant } from '../types/participant';
-import type { RevealStage } from '../utils/revealState';
+import { initialRevealState, revealField, type RevealState } from '../utils/revealState';
 
 const winner: Participant = {
   id: 'p-001',
@@ -11,25 +11,21 @@ const winner: Participant = {
   affiliation: 'กองทดสอบพิเศษ',
 };
 
-function renderStage(phase: SpinPhase, revealStage: RevealStage | null) {
+function renderStage(phase: SpinPhase, revealState: RevealState | null, sidebarHidden = false, eligibleCount = 3) {
   return renderToStaticMarkup(
     <Stage
       phase={phase}
       currentWinner={winner}
-      revealStage={revealStage}
-      sidebarHidden={false}
+      revealState={revealState}
+      sidebarHidden={sidebarHidden}
       particles={[]}
-      canSpin={phase === 'idle'}
-      eligibleCount={316}
-      totalCount={316}
-      removeSelected
+      canSpin={phase === 'idle' && eligibleCount > 0}
+      eligibleCount={eligibleCount}
+      totalCount={3}
       muted={false}
       message=""
       onSpin={vi.fn()}
-      onOpenAll={vi.fn()}
-      onNext={vi.fn()}
-      onAdvanceReveal={vi.fn()}
-      onToggleRemoveSelected={vi.fn()}
+      onReveal={vi.fn()}
       onToggleMuted={vi.fn()}
       onHistory={vi.fn()}
       onReset={vi.fn()}
@@ -52,27 +48,47 @@ describe('stage winner reveal rendering', () => {
   );
 
   it('shows affiliation only after the wheel-stop reveal state begins', () => {
-    const html = renderStage('revealingAffiliation', 'affiliation');
+    const html = renderStage('revealing', initialRevealState);
     expect(html).toContain(winner.affiliation);
     expect(html).not.toContain(winner.title);
     expect(html).not.toContain(winner.fullName);
-    expect(html).toContain('คลิกเพื่อเปิดชื่อผู้โชคดี');
+    expect(html).toContain('เปิดยศ');
+    expect(html).toContain('เปิดชื่อ');
+    expect(html).not.toContain('เปิดทั้งหมด');
+    expect(html).not.toContain('นำชื่อที่สุ่มได้ออกจากรอบถัดไป');
   });
 
-  it('first reveal advance exposes title only and keeps full name hidden', () => {
-    const html = renderStage('revealingTitle', 'title');
+  it('opening title exposes only title', () => {
+    const html = renderStage('revealing', revealField(initialRevealState, 'title'));
     expect(html).toContain(winner.affiliation);
     expect(html).toContain(winner.title);
     expect(html).not.toContain(winner.fullName);
-    expect(html).toContain('คลิกอีกครั้งเพื่อเปิดชื่อผู้โชคดี');
+    expect(html).not.toContain('เปิดยศ');
+    expect(html).toContain('เปิดชื่อ');
   });
 
-  it('second reveal advance exposes full name and removes repeated reveal actions', () => {
-    const html = renderStage('complete', 'complete');
+  it('opening name first exposes only full name', () => {
+    const html = renderStage('revealing', revealField(initialRevealState, 'name'));
+    expect(html).toContain(winner.fullName);
+    expect(html).not.toContain(winner.title);
+    expect(html).toContain('เปิดยศ');
+    expect(html).not.toContain('เปิดชื่อ');
+  });
+
+  it('shows both fields after both reveals while keeping SPIN disabled for decision', () => {
+    const html = renderStage('decision', { titleRevealed: true, nameRevealed: true });
     expect(html).toContain(winner.affiliation);
     expect(html).toContain(winner.title);
     expect(html).toContain(winner.fullName);
     expect(html).not.toContain('เปิดทั้งหมด');
-    expect(html).not.toContain('คลิกอีกครั้งเพื่อเปิดชื่อผู้โชคดี');
+    expect(html).toMatch(/class="spin-button"[^>]*disabled/);
+  });
+
+  it('keeps the sidebar-expanded class and hides SPIN for an empty eligible pool', () => {
+    const html = renderStage('idle', null, true, 0);
+    expect(html).toContain('stage-expanded');
+    expect(html).toContain('แสดงรายชื่อ');
+    expect(html).toContain('สุ่มรายชื่อครบทุกคนแล้ว');
+    expect(html).toMatch(/class="spin-button"[^>]*disabled/);
   });
 });

@@ -137,7 +137,7 @@ h2 {
   --frog-celebration-scale: 1.02;
   --frog-approach-x: clamp(58px, 6vw, 112px);
   --frog-approach-y: clamp(-58px, -4vw, -30px);
-  --frog-interaction-x: clamp(92px, 8vw, 168px);
+  --frog-interaction-x: clamp(48px, 5vw, 92px);
   --frog-interaction-y: clamp(-74px, -5vw, -38px);
   --frog-celebration-x: clamp(36px, 5vw, 92px);
   --frog-celebration-y: clamp(-46px, -4vw, -18px);
@@ -174,16 +174,14 @@ h2 {
 .frog-frogSwipe,
 .frog-spinning,
 .frog-slowing {
-  transform: translate(var(--frog-approach-x), var(--frog-approach-y)) scale(var(--frog-idle-scale)) rotate(-2deg);
+  transform: translate(var(--frog-interaction-x), var(--frog-interaction-y)) scale(var(--frog-interaction-scale)) rotate(-4deg);
 }
 
 .frog-frogSwipe {
-  transform: translate(var(--frog-interaction-x), var(--frog-interaction-y)) scale(var(--frog-interaction-scale)) rotate(-4deg);
-  animation: frog-swipe 260ms ease-in-out 1 alternate;
+  animation: frog-swipe 260ms ease-out both;
 }
 
-.frog-celebrating,
-.frog-complete {
+.frog-decision {
   transform: translate(var(--frog-celebration-x), var(--frog-celebration-y)) scale(var(--frog-celebration-scale)) rotate(3deg);
   animation: frog-party 780ms ease-in-out infinite alternate;
 }
@@ -264,14 +262,9 @@ h2 {
   backdrop-filter: blur(10px);
 }
 
-.winner-board-clickable {
-  cursor: pointer;
-}
-
-.winner-board-clickable:hover {
-  background:
-    linear-gradient(145deg, rgba(7, 10, 20, 0.9), rgba(7, 10, 20, 0.56)),
-    linear-gradient(90deg, rgba(255, 228, 95, 0.16), rgba(38, 240, 216, 0.14));
+.winner-board-result {
+  display: flex;
+  flex-direction: column;
 }
 
 .result-section {
@@ -291,8 +284,7 @@ h2 {
 }
 
 .affiliation-text {
-  min-height: clamp(96px, 12vh, 150px);
-  margin-bottom: clamp(22px, 3vh, 36px);
+  margin-bottom: clamp(24px, 4vh, 44px);
   color: #fff6bf;
   font-size: clamp(20px, 1.7vw, 30px);
   font-weight: 700;
@@ -301,8 +293,7 @@ h2 {
 }
 
 .title-text {
-  min-height: 54px;
-  margin-bottom: clamp(22px, 3vh, 34px);
+  margin-bottom: 0;
   color: #86f5ef;
   font-size: clamp(26px, 2.1vw, 38px);
   font-weight: 800;
@@ -310,7 +301,6 @@ h2 {
 }
 
 .name-text {
-  min-height: clamp(108px, 15vh, 170px);
   margin-bottom: 0;
   color: #fff;
   font-size: clamp(32px, 2.8vw, 52px);
@@ -320,20 +310,93 @@ h2 {
   animation: result-name-pop 340ms ease-out both;
 }
 
-.reveal-actions {
+.winner-identity {
   display: flex;
+  flex: 1;
+  flex-direction: column;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 8px;
+  justify-content: center;
+  gap: clamp(28px, 5vh, 56px);
+  text-align: center;
 }
 
-.reveal-instruction {
-  min-height: 28px;
-  margin: 16px 0 0;
+.winner-identity .result-section {
+  width: 100%;
+}
+
+.reveal-button {
+  min-width: min(100%, 220px);
+  min-height: 68px;
+  padding: 12px 24px;
+  border: 2px solid #ffe45f;
+  border-radius: 10px;
+  color: #1a0c05;
+  background: linear-gradient(180deg, #ffe66b, #ff9f1c);
+  box-shadow: 0 12px 28px rgba(255, 159, 28, 0.34);
+  font-size: clamp(22px, 1.7vw, 30px);
+  font-weight: 800;
+}
+
+.decision-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 6, 14, 0.82);
+}
+
+.decision-modal {
+  width: min(100%, 680px);
+  padding: clamp(28px, 4vw, 52px);
+  border: 2px solid #ffe45f;
+  border-radius: 16px;
   color: #fff;
-  font-size: clamp(18px, 1.3vw, 24px);
-  font-weight: 700;
+  background: #101725;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+
+.decision-modal h2 {
+  color: #fff6bf;
+  font-size: clamp(24px, 2.3vw, 36px);
+  line-height: 1.3;
+}
+
+.decision-winner {
+  margin: 30px 0 8px;
+  font-size: clamp(28px, 2.6vw, 42px);
+  font-weight: 800;
+}
+
+.decision-affiliation {
+  color: #86f5ef;
+  font-size: clamp(20px, 1.7vw, 28px);
+}
+
+.decision-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.decision-actions button {
+  min-height: 64px;
+  padding: 12px 22px;
+  border: 1px solid #ffe45f;
+  border-radius: 10px;
+  color: #1a0c05;
+  background: #ffe45f;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.decision-actions button + button {
+  color: #fff;
+  background: #233348;
 }
 
 .idle-copy {
@@ -597,10 +660,10 @@ textarea {
 
 @keyframes frog-swipe {
   from {
-    transform: translate(calc(var(--frog-interaction-x) - 10px), var(--frog-interaction-y)) scale(var(--frog-interaction-scale)) rotate(-7deg);
+    transform: translate(var(--frog-approach-x), var(--frog-approach-y)) scale(var(--frog-idle-scale)) rotate(-2deg);
   }
   to {
-    transform: translate(calc(var(--frog-interaction-x) + 18px), calc(var(--frog-interaction-y) + 10px)) scale(var(--frog-interaction-scale)) rotate(3deg);
+    transform: translate(var(--frog-interaction-x), var(--frog-interaction-y)) scale(var(--frog-interaction-scale)) rotate(-4deg);
   }
 }
 

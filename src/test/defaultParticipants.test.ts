@@ -31,7 +31,7 @@ describe('default participants', () => {
   it('parses the bundled default CSV through the shared participant parser', async () => {
     const csv = readFileSync(defaultCsvPath, 'utf8');
     const validation = await loadDefaultParticipants(async () => new Response(csv));
-    expect(validation.validParticipants).toHaveLength(316);
+    expect(validation.validParticipants).toHaveLength(372);
     expect(validation.invalidRows).toHaveLength(0);
     expect(validation.duplicateRows).toHaveLength(0);
   });
