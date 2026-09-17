@@ -135,7 +135,7 @@ export function Stage({
                       <p className="title-text">{currentWinner.title}</p>
                     </>
                   ) : (
-                    <button className="reveal-button" type="button" onClick={() => onReveal('title')}>เปิดยศ</button>
+                    <button className="reveal-button" type="button" onClick={() => onReveal('title')}>ยศ</button>
                   )}
                 </section>
                 <section className="result-section result-section-name">
@@ -145,7 +145,7 @@ export function Stage({
                       <p className="name-text">{currentWinner.fullName}</p>
                     </>
                   ) : (
-                    <button className="reveal-button" type="button" onClick={() => onReveal('name')}>เปิดชื่อ</button>
+                    <button className="reveal-button" type="button" onClick={() => onReveal('name')}>ชื่อ-สกุล</button>
                   )}
                 </section>
               </div>

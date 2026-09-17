@@ -33,6 +33,39 @@ type Particle = {
 const storageKey = 'log-music-festival-picker-state-v1';
 const notes = ['♪', '♫', '♬', '♩', '♭', '♯'];
 
+type CongratulationsModalProps = {
+  winner: Participant;
+  closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+};
+
+export function CongratulationsModal({ winner, closeButtonRef, onClose }: CongratulationsModalProps) {
+  return (
+    <div className="decision-backdrop">
+      <section
+        className="decision-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="decision-title"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') event.preventDefault();
+          if (event.key === 'Tab') {
+            event.preventDefault();
+            closeButtonRef.current?.focus();
+          }
+        }}
+      >
+        <h2 id="decision-title">ยินดีกับผู้โชคดีที่ได้รับรางวัล</h2>
+        <p className="decision-winner">{winner.title} {winner.fullName}</p>
+        <p className="decision-affiliation">{winner.affiliation}</p>
+        <div className="decision-actions">
+          <button ref={closeButtonRef} type="button" onClick={onClose}>ปิด</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export function App() {
   const [eventState, setEventState] = useLocalStorageState<StoredEventState>(storageKey, defaultEventState);
   const [phase, setPhase] = useState<SpinPhase>('idle');
@@ -49,7 +82,7 @@ export function App() {
   const audioRef = useRef(new FestivalAudio());
   const committedWinnerIdRef = useRef<string | null>(null);
   const decisionPendingRef = useRef(false);
-  const removeDecisionButtonRef = useRef<HTMLButtonElement>(null);
+  const closeResultButtonRef = useRef<HTMLButtonElement>(null);
   const defaultLoadAttemptedRef = useRef(false);
 
   const participantById = useMemo(
@@ -75,7 +108,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (phase === 'decision') removeDecisionButtonRef.current?.focus();
+    if (phase === 'decision') closeResultButtonRef.current?.focus();
   }, [phase]);
 
   useEffect(() => {
@@ -185,15 +218,18 @@ export function App() {
     setRevealState(next);
     if (isRevealComplete(next)) {
       decisionPendingRef.current = true;
-      audioRef.current.playWinner(eventState.muted);
+      const committedWinnerId = committedWinnerIdRef.current;
+      if (committedWinnerId !== currentWinner.id) {
+        committedWinnerIdRef.current = currentWinner.id;
+        setEventState((current) => commitWinner(current, currentWinner, true));
+        audioRef.current.playWinner(eventState.muted);
+      }
       setPhase('decision');
     }
   }
 
-  function handleDecision(removeFromEligibility: boolean) {
-    if (phase !== 'decision' || !currentWinner || committedWinnerIdRef.current === currentWinner.id) return;
-    committedWinnerIdRef.current = currentWinner.id;
-    setEventState((current) => commitWinner(current, currentWinner, removeFromEligibility));
+  function handleCloseResult() {
+    if (phase !== 'decision') return;
     setCurrentWinner(null);
     setRevealState(null);
     setPhase('idle');
@@ -273,34 +309,11 @@ export function App() {
       />
       <HistoryPanel history={eventState.history} open={historyOpen} onClose={() => setHistoryOpen(false)} />
       {phase === 'decision' && currentWinner && (
-        <div className="decision-backdrop">
-          <section
-            className="decision-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="decision-title"
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') event.preventDefault();
-              if (event.key !== 'Tab') return;
-              const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button');
-              if (event.shiftKey && document.activeElement === buttons[0]) {
-                event.preventDefault();
-                buttons[buttons.length - 1]?.focus();
-              } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
-                event.preventDefault();
-                buttons[0]?.focus();
-              }
-            }}
-          >
-            <h2 id="decision-title">ต้องการนำผู้โชคดีรายนี้ออกจากรายชื่อสำหรับการสุ่มรอบถัดไปหรือไม่?</h2>
-            <p className="decision-winner">{currentWinner.title} {currentWinner.fullName}</p>
-            <p className="decision-affiliation">{currentWinner.affiliation}</p>
-            <div className="decision-actions">
-              <button ref={removeDecisionButtonRef} type="button" onClick={() => handleDecision(true)}>นำออกจากการสุ่ม</button>
-              <button type="button" onClick={() => handleDecision(false)}>เก็บไว้ในรายชื่อ</button>
-            </div>
-          </section>
-        </div>
+        <CongratulationsModal
+          winner={currentWinner}
+          closeButtonRef={closeResultButtonRef}
+          onClose={handleCloseResult}
+        />
       )}
     </div>
   );

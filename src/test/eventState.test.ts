@@ -24,6 +24,22 @@ const state: StoredEventState = {
 };
 
 describe('event state', () => {
+  it('uses the winner guard to commit automatic removal exactly once', () => {
+    let committedWinnerId: string | null = null;
+    let next = state;
+    const finalizeWinner = () => {
+      if (committedWinnerId === participants[0].id) return;
+      committedWinnerId = participants[0].id;
+      next = commitWinner(next, participants[0], true);
+    };
+
+    finalizeWinner();
+    finalizeWinner();
+    expect(next.eligibleIds).toEqual(['p-002', 'p-003']);
+    expect(next.history).toHaveLength(1);
+    expect(next.history[0].removedFromEligibility).toBe(true);
+  });
+
   it('preserves a valid version-3 state, including draw history and eligibility', () => {
     const drawn = commitWinner(state, participants[0], true);
     const sanitized = sanitizeStoredEventState(drawn);
